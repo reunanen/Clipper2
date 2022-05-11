@@ -5,17 +5,17 @@ TEST(Clipper2Tests, TestBasicUnion) {
     Clipper2Lib::Clipper clipper;
 
     const Clipper2Lib::Path64 a = {
-        Clipper2Lib::Point64(0, 0),
-        Clipper2Lib::Point64(0, 5),
-        Clipper2Lib::Point64(5, 5),
-        Clipper2Lib::Point64(5, 0)
+        Clipper2Lib::Point64::construct(0, 0),
+        Clipper2Lib::Point64::construct(0, 5),
+        Clipper2Lib::Point64::construct(5, 5),
+        Clipper2Lib::Point64::construct(5, 0)
     };
 
     const Clipper2Lib::Path64 b = {
-        Clipper2Lib::Point64(1, 1),
-        Clipper2Lib::Point64(1, 6),
-        Clipper2Lib::Point64(6, 6),
-        Clipper2Lib::Point64(6, 1)
+        Clipper2Lib::Point64::construct(1, 1),
+        Clipper2Lib::Point64::construct(1, 6),
+        Clipper2Lib::Point64::construct(6, 6),
+        Clipper2Lib::Point64::construct(6, 1)
     };
 
     clipper.AddSubject({ a, b });

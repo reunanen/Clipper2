@@ -4,15 +4,6 @@
     <ClCompile Include="..\googletest\googletest\src\gtest-all.cc">
       <Filter>GoogleTest</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Clipper2Lib\clipper.core.cpp">
-      <Filter>Clipper2Lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Clipper2Lib\clipper.engine.cpp">
-      <Filter>Clipper2Lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Clipper2Lib\clipper.offset.cpp">
-      <Filter>Clipper2Lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\Tests\TestIntersection.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
@@ -35,9 +26,6 @@
     </Filter>
     <Filter Include="GoogleTest">
       <UniqueIdentifier>{61cc31a2-4df7-4560-9c65-d5d97914b2fb}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Clipper2Lib">
-      <UniqueIdentifier>{ac36f960-a009-4011-bb89-354801480f5e}</UniqueIdentifier>
     </Filter>
     <Filter Include="TextFileLoader">
       <UniqueIdentifier>{4a710b17-1097-4d7f-b7b6-e3b0e75a1cb6}</UniqueIdentifier>
