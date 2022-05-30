@@ -56,6 +56,13 @@ TEST(Clipper2Tests, TestFromTextFile3) {
     bool success = false;
     ASSERT_TRUE(LoadTestNum(ifs, 1, false, subject, subject_open, clip, area, count, ct, fr));
 
+    {
+        // workaround to the issue presented in pull request #71
+        Clipper2Lib::Clipper64 c;
+        c.AddSubject(subject);
+        c.Execute(Clipper2Lib::ClipType::Union, fr, subject, solution_open);
+    }
+
     Clipper2Lib::Clipper64 c;
     c.AddSubject(subject);
     c.AddOpenSubject(subject_open);
