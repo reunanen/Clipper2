@@ -41,7 +41,7 @@ std::vector<ResultRegion> ExtractResults(
     return result;
 };
 
-TEST(Clipper2Tests, TestFromTextFile3) {
+TEST(Clipper2Tests, TestFromTextFile3_1) {
     std::ifstream ifs("../../../Tests/Tests3.txt");
     ASSERT_TRUE(ifs);
     ASSERT_TRUE(ifs.good());
@@ -53,7 +53,6 @@ TEST(Clipper2Tests, TestFromTextFile3) {
     Clipper2Lib::FillRule fr;
     int64_t area, count;
 
-    bool success = false;
     ASSERT_TRUE(LoadTestNum(ifs, 1, false, subject, subject_open, clip, area, count, ct, fr));
 
     {
@@ -67,6 +66,57 @@ TEST(Clipper2Tests, TestFromTextFile3) {
     c.AddSubject(subject);
     c.AddOpenSubject(subject_open);
     c.AddClip(clip);
+    c.Execute(ct, fr, solution, solution_open);
+
+    const auto results = ExtractResults(solution);
+
+    for (const auto& result : results) {
+        const auto parent_bounds = Clipper2Lib::Bounds({ result.exterior->polygon });
+        for (const auto& hole : result.holes) {
+            const auto hole_bounds = Clipper2Lib::Bounds({ hole->polygon });
+
+            // the bounding rect of the hole should at least intersect the bounding rect of the parent
+            EXPECT_GE(hole_bounds.right,  parent_bounds.left);
+            EXPECT_LE(hole_bounds.left,   parent_bounds.right);
+            EXPECT_GE(hole_bounds.bottom, parent_bounds.top);
+            EXPECT_LE(hole_bounds.top,    parent_bounds.bottom);
+
+            // moreover, the bounding rect of the hole should not extend outside the bounding rect of the parent
+            EXPECT_GE(hole_bounds.left,   parent_bounds.left);
+            EXPECT_LE(hole_bounds.right,  parent_bounds.right);
+            EXPECT_GE(hole_bounds.top,    parent_bounds.top);
+            EXPECT_LE(hole_bounds.bottom, parent_bounds.bottom);
+        }
+    }    
+}
+
+TEST(Clipper2Tests, TestFromTextFile3_2) {
+    std::ifstream ifs("../../../Tests/Tests3.txt");
+    ASSERT_TRUE(ifs);
+    ASSERT_TRUE(ifs.good());
+        
+    Clipper2Lib::Paths64 subject, subject_open, clip;
+    Clipper2Lib::PolyTree64 solution;
+    Clipper2Lib::Paths64 solution_open;
+    Clipper2Lib::ClipType ct;
+    Clipper2Lib::FillRule fr;
+    int64_t area, count;
+
+    ASSERT_TRUE(LoadTestNum(ifs, 2, false, subject, subject_open, clip, area, count, ct, fr));
+
+    const auto sanitize = [fr](const Clipper2Lib::Paths64& paths) {
+        // workaround to the issue presented in pull request #71
+        Clipper2Lib::Clipper64 c;
+        Clipper2Lib::Paths64 solution, solution_open;
+        c.AddSubject(paths);
+        c.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
+        return solution;
+    };
+
+    Clipper2Lib::Clipper64 c;
+    c.AddSubject(sanitize(subject));
+    c.AddOpenSubject(subject_open);
+    c.AddClip(sanitize(clip));
     c.Execute(ct, fr, solution, solution_open);
 
     const auto results = ExtractResults(solution);
