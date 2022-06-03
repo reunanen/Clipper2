@@ -160,9 +160,14 @@ TEST(Clipper2Tests, TestFromTextFile3_3) {
     c1.Execute(ct, fr, intermediate_solution, solution_open);
 
     Clipper2Lib::Clipper64 c2;
-    Clipper2Lib::PolyTree64 solution;
+    Clipper2Lib::Paths64 second_intermediate_solution;
     c2.AddSubject(intermediate_solution);
-    c2.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
+    c2.Execute(Clipper2Lib::ClipType::Union, fr, second_intermediate_solution, solution_open);
+
+    Clipper2Lib::Clipper64 c3;
+    Clipper2Lib::PolyTree64 solution;
+    c3.AddSubject(second_intermediate_solution);
+    c3.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
 
     const auto results = ExtractResults(solution);
 
