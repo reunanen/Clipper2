@@ -137,3 +137,51 @@ TEST(Clipper2Tests, TestFromTextFile3_2) {
         }
     }
 }
+
+TEST(Clipper2Tests, TestFromTextFile3_3) {
+    std::ifstream ifs("../../../Tests/Tests3.txt");
+    ASSERT_TRUE(ifs);
+    ASSERT_TRUE(ifs.good());
+
+    Clipper2Lib::Paths64 subject, subject_open, clip;
+    Clipper2Lib::Paths64 solution_open;
+    Clipper2Lib::ClipType ct;
+    Clipper2Lib::FillRule fr;
+    int64_t area, count;
+
+    ASSERT_TRUE(LoadTestNum(ifs, 3, false, subject, subject_open, clip, area, count, ct, fr));
+
+    Clipper2Lib::Paths64 intermediate_solution;
+
+    Clipper2Lib::Clipper64 c1;
+    c1.AddSubject(subject);
+    c1.AddOpenSubject(subject_open);
+    c1.AddClip(clip);
+    c1.Execute(ct, fr, intermediate_solution, solution_open);
+
+    Clipper2Lib::Clipper64 c2;
+    Clipper2Lib::PolyTree64 solution;
+    c2.AddSubject(intermediate_solution);
+    c2.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
+
+    const auto results = ExtractResults(solution);
+
+    for (const auto& result : results) {
+        const auto parent_bounds = Clipper2Lib::Bounds({ result.exterior->polygon });
+        for (const auto& hole : result.holes) {
+            const auto hole_bounds = Clipper2Lib::Bounds({ hole->polygon });
+
+            // the bounding rect of the hole should at least intersect the bounding rect of the parent
+            EXPECT_GE(hole_bounds.right, parent_bounds.left);
+            EXPECT_LE(hole_bounds.left, parent_bounds.right);
+            EXPECT_GE(hole_bounds.bottom, parent_bounds.top);
+            EXPECT_LE(hole_bounds.top, parent_bounds.bottom);
+
+            // moreover, the bounding rect of the hole should not extend outside the bounding rect of the parent
+            EXPECT_GE(hole_bounds.left, parent_bounds.left);
+            EXPECT_LE(hole_bounds.right, parent_bounds.right);
+            EXPECT_GE(hole_bounds.top, parent_bounds.top);
+            EXPECT_LE(hole_bounds.bottom, parent_bounds.bottom);
+        }
+    }
+}
