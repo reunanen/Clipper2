@@ -96,7 +96,6 @@ TEST(Clipper2Tests, TestFromTextFile3_2) {
     ASSERT_TRUE(ifs.good());
         
     Clipper2Lib::Paths64 subject, subject_open, clip;
-    Clipper2Lib::PolyTree64 solution;
     Clipper2Lib::Paths64 solution_open;
     Clipper2Lib::ClipType ct;
     Clipper2Lib::FillRule fr;
@@ -104,20 +103,18 @@ TEST(Clipper2Tests, TestFromTextFile3_2) {
 
     ASSERT_TRUE(LoadTestNum(ifs, 2, false, subject, subject_open, clip, area, count, ct, fr));
 
-    const auto sanitize = [fr](const Clipper2Lib::Paths64& paths) {
-        // workaround to the issue presented in pull request #71
-        Clipper2Lib::Clipper64 c;
-        Clipper2Lib::Paths64 solution, solution_open;
-        c.AddSubject(paths);
-        c.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
-        return solution;
-    };
+    Clipper2Lib::Paths64 intermediate_solution;
 
-    Clipper2Lib::Clipper64 c;
-    c.AddSubject(sanitize(subject));
-    c.AddOpenSubject(subject_open);
-    c.AddClip(sanitize(clip));
-    c.Execute(ct, fr, solution, solution_open);
+    Clipper2Lib::Clipper64 c1;
+    c1.AddSubject(subject);
+    c1.AddOpenSubject(subject_open);
+    c1.AddClip(clip);
+    c1.Execute(ct, fr, intermediate_solution, solution_open);
+
+    Clipper2Lib::Clipper64 c2;
+    Clipper2Lib::PolyTree64 solution;
+    c2.AddSubject(intermediate_solution);
+    c2.Execute(Clipper2Lib::ClipType::Union, fr, solution, solution_open);
 
     const auto results = ExtractResults(solution);
 
