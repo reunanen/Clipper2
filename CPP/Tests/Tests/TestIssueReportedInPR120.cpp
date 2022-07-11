@@ -25,7 +25,7 @@ TEST(Clipper2Tests, TestIssueReportedInPR120)
   // check that the point of interest is not inside any subject
   for (const auto& path : subject) {
     const auto result = Clipper2Lib::PointInPolygon(point_of_interest, path);
-    EXPECT_EQ(result, Clipper2Lib::PointInPolyResult::IsOutside);
+    EXPECT_EQ(result, Clipper2Lib::PointInPolygonResult::IsOutside);
   }
 
   Clipper2Lib::PolyTree64 solution;
@@ -74,7 +74,7 @@ TEST(Clipper2Tests, TestIssueReportedInPR120)
 
       // 2. see if the point of interest is inside this path
       const auto point_in_polygon_result = Clipper2Lib::PointInPolygon(point_of_interest, polygon);
-      if (point_in_polygon_result == Clipper2Lib::PointInPolyResult::IsInside) {
+      if (point_in_polygon_result == Clipper2Lib::PointInPolygonResult::IsInside) {
         point_of_interest_counter += is_hole ? -1 : 1;
       }
     }
