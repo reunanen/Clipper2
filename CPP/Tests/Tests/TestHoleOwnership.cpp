@@ -16,7 +16,7 @@ bool CheckChildrenAreInsideOwner(const PolyPath64& outer)
     {
       Rect64 child_rec = Bounds(child->polygon());
       if (PointInPolygon(child_rec.MidPoint(), 
-        outer.polygon()) != PointInPolyResult::IsInside) 
+        outer.polygon()) != PointInPolygonResult::IsInside) 
           return false;
     }
   }
@@ -25,7 +25,7 @@ bool CheckChildrenAreInsideOwner(const PolyPath64& outer)
   return true;
 }
 
-TEST(Clipper2Tests, TestFromTextFile3)
+TEST(Clipper2Tests, TestPolytreeHoleOwnership1)
 {
 #ifdef _WIN32
   std::ifstream ifs("../../../Tests/PolytreeHoleOwner.txt");

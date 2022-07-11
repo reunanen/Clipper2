@@ -1,7 +1,7 @@
 /*******************************************************************************
 * Author    :  Angus Johnson                                                   *
 * Version   :  Clipper2 - beta                                                 *
-* Date      :  3 July 2022                                                     *
+* Date      :  9 July 2022                                                     *
 * Website   :  http://www.angusj.com                                           *
 * Copyright :  Angus Johnson 2010-2022                                         *
 * Purpose   :  This is the main polygon clipping module                        *
@@ -121,21 +121,9 @@ namespace Clipper2Lib {
 	}
 
 
-	inline void SetAsOuter(OutRec& outrec)
-	{
-		outrec.state = OutRecState::Outer;
-	}
-
-
 	inline bool IsInner(const OutRec& outrec)
 	{
 		return (outrec.state == OutRecState::Inner);
-	}
-
-
-	inline void SetAsInner(OutRec& outrec)
-	{
-		outrec.state = OutRecState::Inner;
 	}
 
 
@@ -572,93 +560,18 @@ namespace Clipper2Lib {
 			AreReallyClose(op->pt, op->prev->pt))));
 	}
 
-
-	bool CheckFixInnerOuter(Active& ae, bool orientation_is_reversed)
+	inline bool OutrecIsAscending(const Active* hotEdge)
 	{
-		bool wasOuter = IsOuter(*ae.outrec), isOuter = true;
-
-		Active* ae2 = ae.prev_in_ael;
-		while (ae2)
-		{
-			if (IsHotEdge(*ae2) && !IsOpen(*ae2)) isOuter = !isOuter;
-			ae2 = ae2->prev_in_ael;
-		}
-
-		if (isOuter == wasOuter) return false;
-
-		if (isOuter)
-			SetAsOuter(*ae.outrec);
-		else
-			SetAsInner(*ae.outrec);
-
-		//now check and fix ownership
-		ae2 = GetPrevHotEdge(ae);
-		if (isOuter)
-		{
-			if (ae2 && IsInner(*ae2->outrec))
-				ae.outrec->owner = ae2->outrec;
-			else
-				ae.outrec->owner = nullptr;
-		}
-		else
-		{
-			if (!ae2)
-				SetAsOuter(*ae.outrec);
-			else if (IsInner(*ae2->outrec))
-				ae.outrec->owner = ae2->outrec->owner;
-			else
-				ae.outrec->owner = ae2->outrec;
-		}
-
-		if ((Area(ae.outrec->pts, orientation_is_reversed) < 0.0) == isOuter)
-			ReverseOutPts(ae.outrec->pts);
-		return true;
+		return (hotEdge == hotEdge->outrec->front_edge);
 	}
 
-
-	void SetOwnerAndInnerOuterState(const Active& e)
+	inline void SwapFrontBackSides(OutRec& outrec)
 	{
-		Active* e2;
-		OutRec* outrec = e.outrec;
-
-		if (IsOpen(e))
-		{
-			outrec->owner = nullptr;
-			outrec->state = OutRecState::Open;
-			return;
-		}
-		//set owner ...
-		if (IsHeadingLeftHorz(e))
-		{
-			e2 = e.next_in_ael;  //ie assess state from opposite direction
-			while (e2 && (!IsHotEdge(*e2) || IsOpen(*e2)))
-				e2 = e2->next_in_ael;
-			if (!e2)
-				outrec->owner = nullptr;
-			else if ((e2->outrec->state == OutRecState::Outer) == (e2->outrec->front_edge == e2))
-				outrec->owner = e2->outrec->owner;
-			else
-				outrec->owner = e2->outrec;
-		}
-		else
-		{
-			e2 = GetPrevHotEdge(e);
-			while (e2 && (!IsHotEdge(*e2) || IsOpen(*e2)))
-				e2 = e2->prev_in_ael;
-			if (!e2)
-				outrec->owner = nullptr;
-			else if (IsOuter(*e2->outrec) == (e2->outrec->back_edge == e2))
-				outrec->owner = e2->outrec->owner;
-			else
-				outrec->owner = e2->outrec;
-		}
-		//set inner/outer ...
-		if (!outrec->owner || IsInner(*outrec->owner))
-			outrec->state = OutRecState::Outer;
-		else
-			outrec->state = OutRecState::Inner;
+		Active* tmp = outrec.front_edge;
+		outrec.front_edge = outrec.back_edge;
+		outrec.back_edge = tmp;
+		outrec.pts = outrec.pts->next;
 	}
-
 
 	inline bool EdgesAdjacentInAEL(const IntersectNode& inode)
 	{
@@ -1386,59 +1299,53 @@ namespace Clipper2Lib {
 		outrec_list_.push_back(outrec);
 		outrec->pts = nullptr;
 		outrec->polypath = nullptr;
-
 		e1.outrec = outrec;
-		SetOwnerAndInnerOuterState(e1);
-		//flag when orientation needs to be rechecked later ...
 		e2.outrec = outrec;
+
+		//Setting the owner and inner/outer states (above) is an essential
+		//precursor to setting edge 'sides' (ie left and right sides of output
+		//polygons) and hence the orientation of output paths ...
 
 		if (IsOpen(e1))
 		{
+			outrec->owner = nullptr;
+			outrec->state = OutRecState::Open;
 			if (e1.wind_dx > 0)
 				SetSides(*outrec, e1, e2);
 			else
 				SetSides(*outrec, e2, e1);
-		}
+		}	 
 		else
 		{
-			//Setting the owner and inner/outer states (above) is an essential
-			//precursor to setting edge 'sides' (ie left and right sides of output
-			//polygons) and hence the orientation of output paths ...
+			Active* prevHotEdge = GetPrevHotEdge(e1);
+			//e.windDx is the winding direction of the **input** paths
+			//and unrelated to the winding direction of output polygons.
+			//Output orientation is determined by e.outrec.frontE which is
+			//the ascending edge (see AddLocalMinPoly).
+			if (!prevHotEdge) 
+			{
+				outrec->owner = nullptr;
+				outrec->state = OutRecState::Outer;
+			}
+			else if (OutrecIsAscending(prevHotEdge)) 
+			{
+				outrec->state = OutRecState::Inner;
+				outrec->owner = prevHotEdge->outrec;
+			}
+			else
+			{
+				outrec->state = OutRecState::Outer;
+				outrec->owner = prevHotEdge->outrec;
+			}
 			if (IsOuter(*outrec) == is_new)
 				SetSides(*outrec, e1, e2);
 			else
 				SetSides(*outrec, e2, e1);
 		}
+			
 		OutPt* op = new OutPt(pt, outrec);
 		outrec->pts = op;
 		return op;
-	}
-
-
-	bool ClipperBase::FixSides(Active& e, Active& e2)
-	{
-		if (ValidateClosedPathEx(e.outrec) && ValidateClosedPathEx(e2.outrec))
-		{
-			if (CheckFixInnerOuter(e, orientation_is_reversed_) &&
-				IsOuter(*e.outrec) == IsFront(e))
-				SwapSides(*e.outrec);
-			else if (CheckFixInnerOuter(e2, orientation_is_reversed_) &&
-				IsOuter(*e2.outrec) == IsFront(e2))
-				SwapSides(*e2.outrec);
-			else
-				succeeded_ = false;
-		}
-		else if (!e.outrec->pts)
-		{
-			if (ValidateClosedPathEx(e2.outrec))
-				succeeded_ = false;
-			UncoupleOutRec(e);
-			UncoupleOutRec(e2);
-			//fixed, but there's nothing to terminate in AddLocalMaxPoly
-		}
-		else
-			succeeded_ = false;
-		return succeeded_;
 	}
 
 
@@ -1446,14 +1353,11 @@ namespace Clipper2Lib {
 	{
 		if (IsFront(e1) == IsFront(e2))
 		{
-			if (IsOpen(e1))
-			{
-				if(e1.wind_dx < 0)
-					SwapSides(*e2.outrec);
-				else
-					SwapSides(*e1.outrec);
-			}
-			else if (!FixSides(e1, e2))
+			if (IsOpenEnd(e1))
+				SwapFrontBackSides(*e1.outrec);
+			else if (IsOpenEnd(e2))
+				SwapFrontBackSides(*e2.outrec);
+			else 
 			{
 				succeeded_ = false;
 				return nullptr;
@@ -1464,6 +1368,10 @@ namespace Clipper2Lib {
 		if (e1.outrec == e2.outrec)
 		{
 			OutRec& outrec = *e1.outrec;
+			outrec.owner = GetRealOutRec(outrec.owner);
+			if (outrec.owner && !outrec.owner->front_edge) 
+				outrec.owner = outrec.owner->owner;
+
 			outrec.pts = result;
 			UncoupleOutRec(e1);
 			if (!IsOpen(e1))
@@ -2010,6 +1918,10 @@ namespace Clipper2Lib {
 			}
 			else if (IsFront(e1) || (e1.outrec == e2.outrec))
 			{
+				//this 'else if' condition isn't strictly needed but
+				//it's sensible to split polygons that ony touch at
+				//a common vertex (not at common edges).
+
 				resultOp = AddLocalMaxPoly(e1, e2, pt);
 				OutPt* op2 = AddLocalMinPoly(e1, e2, pt);
 #ifdef USINGZ
@@ -2518,7 +2430,6 @@ namespace Clipper2Lib {
 					if (e->curr_x == horz.top.x && !IsHorizontal(*e))
 					{
 						pt = NextVertex(horz)->pt;
-
 						if (is_left_to_right)
 						{
 							//with open paths we'll only break once past horz's end
@@ -3277,14 +3188,16 @@ namespace Clipper2Lib {
 					opB->prev = opA;
 					op1->prev = op2;
 					op2->next = op1;
-					//this isn't essential but it's
-					//easier to track ownership when it
-					//always defers to the lower index
+
+					or1->owner = GetRealOutRec(or1->owner);
+					or2->owner = GetRealOutRec(or2->owner);
+
 					if (or1->idx < or2->idx)
 					{
 						or1->pts = op1;
 						or2->pts = nullptr;
 						or2->owner = or1;
+						or2->state = or1->state;
 					}
 					else
 					{
@@ -3292,6 +3205,7 @@ namespace Clipper2Lib {
 						or2->pts = op1;
 						or1->pts = nullptr;
 						or1->owner = or2;
+						or1->state = or2->state;
 					}
 				}
 				break;
@@ -3331,11 +3245,13 @@ namespace Clipper2Lib {
 					opB->next = opA;
 					op1->next = op2;
 					op2->prev = op1;
+
 					if (or1->idx < or2->idx)
 					{
 						or1->pts = op1;
 						or2->pts = nullptr;
 						or2->owner = or1;
+						or2->state = or1->state;
 					}
 					else
 					{
@@ -3343,6 +3259,7 @@ namespace Clipper2Lib {
 						or2->pts = op1;
 						or1->pts = nullptr;
 						or1->owner = or2;
+						or1->state = or2->state;
 					}
 				}
 				break;
@@ -3472,10 +3389,10 @@ namespace Clipper2Lib {
 		}
 	}
 
-	PointInPolyResult PointInPolygon(const Point64& pt, OutPt* ops)
+	PointInPolygonResult PointInPolygon(const Point64& pt, OutPt* ops)
 	{
 		if (ops->next == ops || ops->next == ops->prev)
-			return PointInPolyResult::IsOutside;
+			return PointInPolygonResult::IsOutside;
 		
 		int val = 0;
 		OutPt *curr = ops, *prev = curr->prev;
@@ -3502,7 +3419,7 @@ namespace Clipper2Lib {
 					((pt.x < prev->pt.x) != (pt.x < curr->pt.x))))
 				{
 					ops->prev->next = ops; //reestablish the link
-					return PointInPolyResult::IsOn;
+					return PointInPolygonResult::IsOn;
 				}
 				curr = curr->next;
 				continue;
@@ -3520,7 +3437,7 @@ namespace Clipper2Lib {
 				if (d == 0)
 				{
 					ops->prev->next = ops; //reestablish the link
-					return PointInPolyResult::IsOn;
+					return PointInPolygonResult::IsOn;
 				}
 				if ((d < 0) == is_above) val = 1 - val;
 			}
@@ -3531,21 +3448,21 @@ namespace Clipper2Lib {
 
 		ops->prev->next = ops; //reestablish the link
 		return val == 0 ? 
-			PointInPolyResult::IsOutside : 
-			PointInPolyResult::IsInside;
+			PointInPolygonResult::IsOutside : 
+			PointInPolygonResult::IsInside;
 	}
 
 	bool Path1InsidePath2(OutPt* op1, OutPt* op2)
 	{
-		PointInPolyResult result = PointInPolyResult::IsOn;
+		PointInPolygonResult result = PointInPolygonResult::IsOn;
 		OutPt* op = op1;
 		do
 		{
 			result = PointInPolygon(op->pt, op2);
-			if (result != PointInPolyResult::IsOn) break;
+			if (result != PointInPolygonResult::IsOn) break;
 			op = op->next;
 		} while (op != op1);
-		return result == PointInPolyResult::IsInside;
+		return result == PointInPolygonResult::IsInside;
 	}
 
 	void ClipperBase::BuildTree(PolyPath64& polytree, Paths64& open_paths)
@@ -3559,6 +3476,10 @@ namespace Clipper2Lib {
 			if (!outrec || !outrec->pts) continue;
 
 			outrec->owner = GetRealOutRec(outrec->owner);
+			while (outrec->owner &&
+				!Path1InsidePath2(outrec->pts, outrec->owner->pts))
+					outrec->owner = GetRealOutRec(outrec->owner->owner);
+
 			if (outrec->owner)
 			{
 				if (outrec->owner->splits)
@@ -3595,13 +3516,10 @@ namespace Clipper2Lib {
 			}
 
 			Path64 path;
-			//closed paths will return a Positive orientation unless
-			//ReverseSolution or orientation_is_reversed_ are true
+			//closed outer paths should always return a Positive orientation
+			//except when ReverseSolution == true
 			if (!BuildPath(outrec->pts,
 				ReverseSolution != orientation_is_reversed_, false, path)) continue;
-
-			if (outrec->owner && outrec->owner->state == outrec->state)
-				outrec->owner = outrec->owner->owner;
 
 			PolyPath64* owner_polypath;
 			if (outrec->owner && outrec->owner->polypath)
