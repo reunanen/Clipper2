@@ -3436,6 +3436,8 @@ namespace Clipper2Lib {
 				split = GetRealOutRec(split); // may not be necessary
 				if (!split || split == owner || split == outrec)
 					continue;
+				else if (split->owner && split->owner->owner == owner)
+					continue;
 				else if (split->splits && DeepCheckOwner(outrec, split))
 					return true;
 				else if (Path1InsidePath2(outrec->pts, split->pts))
