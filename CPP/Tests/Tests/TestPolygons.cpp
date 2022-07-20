@@ -113,10 +113,14 @@ TEST(Clipper2Tests, TestMultiplePolygons)
     }
     else
     {
-      EXPECT_LE(count_diff, 8);
-      if (count_diff > 1) 
-        EXPECT_LE(relative_count_diff, 0.1);
-      EXPECT_LE(relative_area_diff, 0.0005);
+      if (count >= 0)
+      {
+        EXPECT_LE(count_diff, 8);
+        if (count_diff > 1) 
+          EXPECT_LE(relative_count_diff, 0.1);
+      }
+      if (area >= 0)
+        EXPECT_LE(relative_area_diff, 0.0005);
     }
 
     // Make sure that the polytree variant gives results similar to the paths-only version.
