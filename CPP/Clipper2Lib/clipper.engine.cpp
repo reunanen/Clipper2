@@ -3475,7 +3475,10 @@ namespace Clipper2Lib {
 		{
 			if (Path1InsidePath2(outrec->pts, outrec->owner->pts))
 				return true;
-			outrec->owner = GetRealOutRec(outrec->owner->owner);
+			OutRec* new_owner = GetRealOutRec(outrec->owner->owner);
+			if (new_owner == outrec->owner)
+				break;
+			outrec->owner = new_owner;
 		}
 		return false;
 	}
