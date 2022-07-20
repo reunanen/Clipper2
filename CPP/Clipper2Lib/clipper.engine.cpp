@@ -3423,7 +3423,7 @@ namespace Clipper2Lib {
 		return result == PointInPolygonResult::IsInside;
 	}
 
-	bool DeepCheckOwner(OutRec* outrec, OutRec* owner)
+	bool DeepCheckOwner(OutRec* outrec, OutRec* owner, std::deque<const OutRec*> owners_already_checked = std::deque<const OutRec*>())
 	{
 		// while looking for the correct owner, check the owner's 
 		// splits **before** checking the owner itself because 
@@ -3431,12 +3431,36 @@ namespace Clipper2Lib {
 		// first would miss the inner split's true ownership
 		if (owner && owner->splits)
 		{
+			const auto already_checked = [&](const OutRec* candidate)
+			{
+				return std::find(
+					owners_already_checked.begin(),
+					owners_already_checked.end(),
+					candidate
+				) != owners_already_checked.end();
+			};
+
+			std::deque<const OutRec*> new_owners_already_checked;
+
+			const auto get_new_owners_already_checked = [&]()
+			{
+				// lazy evaluation
+				if (new_owners_already_checked.empty())
+				{
+					new_owners_already_checked = owners_already_checked;
+					new_owners_already_checked.push_back(owner);
+				}
+				return new_owners_already_checked;
+			};
+
 			for (OutRec* split : *owner->splits)
 			{
 				split = GetRealOutRec(split); // may not be necessary
 				if (!split || split == owner || split == outrec)
 					continue;
-				else if (split->splits && DeepCheckOwner(outrec, split))
+				else if (already_checked(split))
+					continue; // avoid infinite recursion (see e.g. https://github.com/AngusJohnson/Clipper2/pull/131)
+				else if (split->splits && DeepCheckOwner(outrec, split, get_new_owners_already_checked()))
 					return true;
 				else if (Path1InsidePath2(outrec->pts, split->pts))
 				{
