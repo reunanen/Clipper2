@@ -79,8 +79,18 @@ TEST(Clipper2Tests, TestMultiplePolygons)
       EXPECT_LE(count_diff, 1);
     else if (IsInList(test_number, { 23, 87, 102, 111, 113, 191 }))
       EXPECT_LE(count_diff, 1);
-    else 
+    else {
       EXPECT_EQ(count_diff, 0);
+      if (count_diff != 0) {
+        std::cerr << "---------------------" << std::endl;
+        std::cerr << "Test number    : " << test_number << std::endl;
+        std::cerr << "Stored count   : " << stored_count << std::endl;
+        std::cerr << "Measured count : " << measured_count << std::endl;
+        std::cerr << "Stored area    : " << stored_area << std::endl;
+        std::cerr << "Measured area  : " << measured_area << std::endl;
+        std::cerr << "---------------------" << std::endl;
+      }
+    }
 
     // check polygon areas
     if (stored_area <= 0)
