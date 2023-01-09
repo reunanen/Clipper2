@@ -2059,6 +2059,11 @@ namespace Clipper2Lib {
 
     // swap back edges
     std::swap(ltorOr->back_edge, rtolOr->back_edge);
+
+    if (ltorOr->back_edge == nullptr) {
+        throw std::runtime_error("null pointer error");
+    }
+
     ltorOr->back_edge->outrec = ltorOr;
     rtolOr->back_edge->outrec = rtolOr;
 
