@@ -318,21 +318,11 @@ namespace Clipper2Lib
   {
     Rect<T1> result;
 
-    if (std::numeric_limits<T1>::is_integer &&
-      !std::numeric_limits<T2>::is_integer)
-    {
-      result.left = static_cast<T1>(std::round(rect.left * scale));
-      result.top = static_cast<T1>(std::round(rect.top * scale));
-      result.right = static_cast<T1>(std::round(rect.right * scale));
-      result.bottom = static_cast<T1>(std::round(rect.bottom * scale));
-    }
-    else
-    {
-      result.left = rect.left * scale;
-      result.top = rect.top * scale;
-      result.right = rect.right * scale;
-      result.bottom = rect.bottom * scale;
-    }
+    result.left = static_cast<T1>(std::round(rect.left * scale));
+    result.top = static_cast<T1>(std::round(rect.top * scale));
+    result.right = static_cast<T1>(std::round(rect.right * scale));
+    result.bottom = static_cast<T1>(std::round(rect.bottom * scale));
+
     return result;
   }
 
@@ -466,7 +456,7 @@ namespace Clipper2Lib
     if (std::numeric_limits<T1>::is_integer &&
       !std::numeric_limits<T2>::is_integer)
     {
-      RectD r = GetBounds(paths);
+      auto r = GetBounds(paths);
       if ((r.left * scale_x) < min_coord ||
         (r.right * scale_x) > max_coord ||
         (r.top * scale_y) < min_coord ||
