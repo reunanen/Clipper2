@@ -142,7 +142,7 @@ namespace Clipper2Lib
     template <typename T2>
     inline void Init(const T2 x_ = 0, const T2 y_ = 0)
     {
-      if constexpr (std::numeric_limits<T>::is_integer &&
+      if (std::numeric_limits<T>::is_integer &&
         !std::numeric_limits<T2>::is_integer)
       {
         x = static_cast<T>(std::round(x_));
@@ -318,7 +318,7 @@ namespace Clipper2Lib
   {
     Rect<T1> result;
 
-    if constexpr (std::numeric_limits<T1>::is_integer &&
+    if (std::numeric_limits<T1>::is_integer &&
       !std::numeric_limits<T2>::is_integer)
     {
       result.left = static_cast<T1>(std::round(rect.left * scale));
@@ -463,7 +463,7 @@ namespace Clipper2Lib
   {
     Paths<T1> result;
 
-    if constexpr (std::numeric_limits<T1>::is_integer &&
+    if (std::numeric_limits<T1>::is_integer &&
       !std::numeric_limits<T2>::is_integer)
     {
       RectD r = GetBounds(paths);

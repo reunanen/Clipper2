@@ -290,7 +290,8 @@ namespace Clipper2Lib {
     OutPt2* result;
     if (curr_idx < 0 || start_new)
     {
-      result = &op_container_.emplace_back(OutPt2());
+      op_container_.emplace_back(OutPt2());
+      result = &op_container_.back();
       result->pt = pt;
       result->next = result;
       result->prev = result;
@@ -300,7 +301,8 @@ namespace Clipper2Lib {
     {
       OutPt2* prevOp = results_[curr_idx];
       if (prevOp->pt == pt)  return prevOp;
-      result = &op_container_.emplace_back(OutPt2());
+      op_container_.emplace_back(OutPt2());
+      result = &op_container_.back();
       result->owner_idx = curr_idx;
       result->pt = pt;
       result->next = prevOp->next;
