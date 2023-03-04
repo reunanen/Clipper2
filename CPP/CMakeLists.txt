@@ -7,6 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+if(WIN32)
+  # In C++14 we can't use `if constexpr`, but we can use a plain `if`.
+  # This disables `warning C4127: conditional expression is constant`.
+  add_definitions("/wd4127")
+endif(WIN32)
+
 option(CLIPPER2_UTILS "Build utilities" ON)
 option(CLIPPER2_EXAMPLES "Build examples" ON)
 option(CLIPPER2_TESTS "Build tests" ON)
