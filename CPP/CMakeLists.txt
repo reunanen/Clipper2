@@ -197,6 +197,7 @@ endif()
     Tests/TestRectClip.cpp
     Tests/TestTrimCollinear.cpp
     Tests/TestWindows.cpp
+    Tests/TestCompareWithCSharp.cpp
   )
 
   set(CLIPPER2_TESTS "") # one or both of ClipperTests/ClipperTestsZ
@@ -238,6 +239,7 @@ endif()
   file(COPY ../Tests/PolytreeHoleOwner2.txt DESTINATION ${CMAKE_BINARY_DIR} FILE_PERMISSIONS OWNER_READ GROUP_READ WORLD_READ )
   file(COPY ../Tests/Lines.txt DESTINATION ${CMAKE_BINARY_DIR} FILE_PERMISSIONS OWNER_READ GROUP_READ WORLD_READ )
   file(COPY ../Tests/Polygons.txt DESTINATION ${CMAKE_BINARY_DIR} FILE_PERMISSIONS OWNER_READ GROUP_READ WORLD_READ )
+  file(COPY ../Tests/CPP-vs-CS.txt DESTINATION ${CMAKE_BINARY_DIR} FILE_PERMISSIONS OWNER_READ GROUP_READ WORLD_READ )
 endif()
 
 if(USE_EXTERNAL_GBENCHMARK)
