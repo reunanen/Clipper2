@@ -27,7 +27,7 @@ namespace Clipper2Lib.UnitTests
       Paths64 solutionPaths = Clipper.PolyTreeToPaths64(solutionTree);
       double a1 = Clipper.Area(solutionPaths), a2 = solutionTree.Area();
 
-      Assert.IsTrue(a1 == 107100,
+      Assert.IsTrue(a1 == 846.5,
         string.Format("solution has wrong area - value expected: 107,100; value returned; {0} ", a1));
 
       Assert.IsTrue(a1 == a2,

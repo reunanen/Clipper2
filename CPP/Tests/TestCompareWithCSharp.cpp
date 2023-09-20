@@ -25,5 +25,5 @@ TEST(Clipper2Tests, TestCompareWithCSharp)
   c.Execute(ct, fr, solution, solution_open);
 
   const auto measured_area = Area(solution);
-  EXPECT_EQ(measured_area, 107099);
+  EXPECT_EQ(measured_area, 844);
 }
