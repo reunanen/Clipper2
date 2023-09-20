@@ -345,10 +345,10 @@ namespace Clipper2Lib
     {
       Point64 result = new Point64()
       {
-        X = (long) (pt.X * scale),
-        Y = (long) (pt.Y * scale),
+        X = (long) Math.Round(pt.X * scale),
+        Y = (long) Math.Round(pt.Y * scale),
 #if USINGZ
-        Z = (long) (pt.Z),
+        Z = (long) Math.Round(pt.Z),
 #endif
       };
       return result;
@@ -374,10 +374,10 @@ namespace Clipper2Lib
     {
       Rect64 result = new Rect64()
       {
-        left = (long) (rec.left * scale),
-        top = (long) (rec.top * scale),
-        right = (long) (rec.right * scale),
-        bottom = (long) (rec.bottom * scale)
+        left = (long) Math.Round(rec.left * scale),
+        top = (long) Math.Round(rec.top * scale),
+        right = (long) Math.Round(rec.right * scale),
+        bottom = (long) Math.Round(rec.bottom * scale)
       };
       return result;
     }
