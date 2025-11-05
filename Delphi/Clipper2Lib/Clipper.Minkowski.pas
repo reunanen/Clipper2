@@ -2,11 +2,10 @@ unit Clipper.Minkowski;
 
 (*******************************************************************************
 * Author    :  Angus Johnson                                                   *
-* Version   :  10.0 (beta) - aka Clipper2                                      *
-* Date      :  7 May 2022                                                      *
+* Date      :  21 December 2023                                                *
 * Copyright :  Angus Johnson 2010-2022                                         *
 * Purpose   :  Minkowski Addition and Difference                               *
-* License   :  http://www.boost.org/LICENSE_1_0.txt                            *
+* License   :  https://www.boost.org/LICENSE_1_0.txt                           *
 *******************************************************************************)
 
 {$I Clipper.inc}
@@ -52,9 +51,7 @@ var
   tmp: TPaths64;
   quad: TPath64;
 begin
-  if IsClosed then
-    delta := 0 else
-    delta := 1;
+  delta := Iif(IsClosed, 0 , 1);
   baseLen := Length(Base);
   pathLen := Length(Path);
   setLength(tmp, pathLen);
@@ -72,10 +69,7 @@ begin
 
   SetLength(quad, 4);
   SetLength(Result, (pathLen - delta) * baseLen);
-
-  if IsClosed then
-    g := pathLen - 1 else
-    g := 0;
+  g := Iif(IsClosed, pathLen - 1, 0);
 
   for i := delta to pathLen - 1 do
   begin
@@ -87,7 +81,7 @@ begin
       quad[1] := tmp[i][h];
       quad[2] := tmp[i][(j)];
       quad[3] := tmp[g][(j)];
-      if not IsClockwise(quad) then
+      if not IsPositive(quad) then
         Result[k + j] := ReversePath(quad) else
         Result[k + j] := copy(quad, 0, 4);
       h := j;

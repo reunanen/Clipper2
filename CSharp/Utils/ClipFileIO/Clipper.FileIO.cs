@@ -1,173 +1,197 @@
 ﻿/*******************************************************************************
 * Author    :  Angus Johnson                                                   *
-* Date      :  22 May 2022                                                     *
-* Website   :  http://www.angusj.com                                           *
+* Date      :  16 September 2022                                               *
+* Website   :  https://www.angusj.com                                          *
 * Copyright :  Angus Johnson 2010-2022                                         *
-* License:                                                                     *
-* Use, modification & distribution is subject to Boost Software License Ver 1. *
-* http://www.boost.org/LICENSE_1_0.txt                                         *
+* License   :  https://www.boost.org/LICENSE_1_0.txt                           *
 *******************************************************************************/
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
 
+#if USINGZ
+namespace Clipper2ZLib
+#else
 namespace Clipper2Lib
+#endif
 {
 
-  using Path64 = List<Point64>;
-  using PathD = List<PointD>;
-  using Paths64 = List<List<Point64>>;
-  using PathsD = List<List<PointD>>;
-
-  public class ClipperFileIO
+  public static class ClipperFileIO
   {
-    const int margin = 20;
-    const int displayWidth = 800;
-    const int displayHeight = 600;
-    public static Paths64 PathFromStr(string s)
+    public static Paths64 PathFromStr(string? s)
     {
-      if (s == null) return null;
+      if (s == null) return new Paths64();
       Path64 p = new Path64();
       Paths64 pp = new Paths64();
-      int len = s.Length, i = 0, j;
+      int len = s.Length, i = 0;
       while (i < len)
       {
-        bool isNeg;
-        while ((int) s[i] < 33 && i < len) i++;
+        while (s[i] < 33 && i < len) i++;
         if (i >= len) break;
         //get X ...
-        isNeg = (int) s[i] == 45;
+        bool isNeg = s[i] == 45;
         if (isNeg) i++;
-        if (i >= len || (int) s[i] < 48 || (int) s[i] > 57) break;
-        j = i + 1;
-        while (j < len && (int) s[j] > 47 && (int) s[j] < 58) j++;
-        if (!long.TryParse(s[i..j], out long x)) break;
+        if (i >= len || s[i] < 48 || s[i] > 57) break;
+        int j = i + 1;
+        while (j < len && s[j] > 47 && s[j] < 58) j++;
+        if (!long.TryParse(s.Substring(i, j - i), out long x)) break;
         if (isNeg) x = -x;
         //skip space or comma between X & Y ...
         i = j;
-        while (i < len && ((int) s[i] == 32 || (int) s[i] == 44)) i++;
+        while (i < len && (s[i] == 32 || s[i] == 44)) i++;
         //get Y ...
         if (i >= len) break;
-        isNeg = (int) s[i] == 45;
+        isNeg = s[i] == 45;
         if (isNeg) i++;
-        if (i >= len || (int) s[i] < 48 || (int) s[i] > 57) break;
+        if (i >= len || s[i] < 48 || s[i] > 57) break;
         j = i + 1;
-        while (j < len && (int) s[j] > 47 && (int) s[j] < 58) j++;
-        if (!long.TryParse(s[i..j], out long y)) break;
+        while (j < len && s[j] > 47 && s[j] < 58) j++;
+        if (!long.TryParse(s.Substring(i,j-i), out long y)) break;
         if (isNeg) y = -y;
         p.Add(new Point64(x, y));
         //skip trailing space, comma ...
         i = j;
         int nlCnt = 0;
-        while (i < len && ((int) s[i] < 33 || (int) s[i] == 44))
+        while (i < len && (s[i] < 33 || s[i] == 44))
         {
           if (i >= len) break;
-          if ((int) s[i] == 10)
+          if (s[i] == 10)
           {
             nlCnt++;
             if (nlCnt == 2)
             {
-              if (p.Count > 2) pp.Add(p);
+              if (p.Count > 0) pp.Add(p);
               p = new Path64();
             }
           }
           i++;
         }
       }
-      if (p.Count > 2) pp.Add(p);
+      if (p.Count > 0) pp.Add(p);
       return pp;
     }
     //------------------------------------------------------------------------------
 
     public static bool LoadTestNum(string filename, int num,
-      Paths64 subj, Paths64 subj_open, Paths64 clip,
-      out ClipType ct, out FillRule fillRule, out long area, out string caption)
+      Paths64? subj, Paths64? subj_open, Paths64? clip,
+      out ClipType ct, out FillRule fillRule, out long area, out int count, out string caption)
     {
       if (subj == null) subj = new Paths64(); else subj.Clear();
       if (subj_open == null) subj_open = new Paths64(); else subj_open.Clear();
       if (clip == null) clip = new Paths64(); else clip.Clear();
       ct = ClipType.Intersection;
       fillRule = FillRule.EvenOdd;
-      bool numFound = false, result = false;
-      int GetIdx;
-      string numstr = num.ToString();
+      bool result = false;
+      if (num < 1) num = 1;
       caption = "";
       area = 0;
-      StreamReader reader = new StreamReader(filename);
-      if (reader == null) return false;
+      count = 0;
+      StreamReader reader;
+      try
+      {
+        reader = new StreamReader(filename);
+      }
+      catch
+      {
+        return false;
+      }
       while (true)
       {
-        string s = reader.ReadLine();
+        string? s = reader.ReadLine();
         if (s == null) break;
-
-        if (s.IndexOf("CAPTION: ") == 0)
+        
+        if (s.IndexOf("CAPTION: ", StringComparison.Ordinal) == 0)
         {
-          numFound = (num == 0) || (s.IndexOf(numstr) > 0);
-          if (numFound) { caption = s[9..]; result = true; }
+          num--;
+          if (num != 0) continue;
+          caption = s.Substring(9);
+          result = true;
           continue;
         }
 
-        if (!numFound) continue;
+        if (num > 0) continue;
 
-        if (s.IndexOf("CLIPTYPE: ") == 0)
+        if (s.IndexOf("CLIPTYPE: ", StringComparison.Ordinal) == 0)
         {
-          if (s.IndexOf("INTERSECTION") > 0) ct = ClipType.Intersection;
-          else if (s.IndexOf("UNION") > 0) ct = ClipType.Union;
-          else if (s.IndexOf("DIFFERENCE") > 0) ct = ClipType.Difference;
+          if (s.IndexOf("INTERSECTION", StringComparison.Ordinal) > 0) ct = ClipType.Intersection;
+          else if (s.IndexOf("UNION", StringComparison.Ordinal) > 0) ct = ClipType.Union;
+          else if (s.IndexOf("DIFFERENCE", StringComparison.Ordinal) > 0) ct = ClipType.Difference;
           else ct = ClipType.Xor;
           continue;
         }
 
-        if (s.IndexOf("FILLTYPE: ") == 0 ||
-          s.IndexOf("FILLRULE: ") == 0)
+        if (s.IndexOf("FILLTYPE: ", StringComparison.Ordinal) == 0 ||
+            s.IndexOf("FILLRULE: ", StringComparison.Ordinal) == 0)
         {
-          if (s.IndexOf("EVENODD") > 0) fillRule = FillRule.EvenOdd;
-          else if (s.IndexOf("POSITIVE") > 0) fillRule = FillRule.Positive;
-          else if (s.IndexOf("NEGATIVE") > 0) fillRule = FillRule.Negative;
+          if (s.IndexOf("EVENODD", StringComparison.Ordinal) > 0) fillRule = FillRule.EvenOdd;
+          else if (s.IndexOf("POSITIVE", StringComparison.Ordinal) > 0) fillRule = FillRule.Positive;
+          else if (s.IndexOf("NEGATIVE", StringComparison.Ordinal) > 0) fillRule = FillRule.Negative;
           else fillRule = FillRule.NonZero;
           continue;
         }
 
-        if (s.IndexOf("AREA: ") == 0)
+        if (s.IndexOf("SOL_AREA: ", StringComparison.Ordinal) == 0)
         {
-          area = long.Parse(s[6..]);
+          area = long.Parse(s.Substring(10));
           continue;
         }
 
-        if (s.IndexOf("SUBJECTS_OPEN") == 0) GetIdx = 2;
-        else if (s.IndexOf("SUBJECTS") == 0) GetIdx = 1;
-        else if (s.IndexOf("CLIPS") == 0) GetIdx = 3;
+        if (s.IndexOf("SOL_COUNT: ", StringComparison.Ordinal) == 0)
+        {
+          count = int.Parse(s.Substring(11));
+          continue;
+        }
+
+        int GetIdx;
+        if (s.IndexOf("SUBJECTS_OPEN", StringComparison.Ordinal) == 0) GetIdx = 2;
+        else if (s.IndexOf("SUBJECTS", StringComparison.Ordinal) == 0) GetIdx = 1;
+        else if (s.IndexOf("CLIPS", StringComparison.Ordinal) == 0) GetIdx = 3;
         else continue;
 
         while (true)
         {
           s = reader.ReadLine();
           if (s == null) break;
-          Paths64 paths = PathFromStr(s); //0 or 1 path
+          Paths64? paths = PathFromStr(s); //0 or 1 path
           if (paths == null || paths.Count == 0)
           {
             if (GetIdx == 3) return result;
-            else if (s.IndexOf("SUBJECTS_OPEN") == 0) GetIdx = 2;
-            else if (s.IndexOf("CLIPS") == 0) GetIdx = 3;
+            if (s.IndexOf("SUBJECTS_OPEN", StringComparison.Ordinal) == 0) GetIdx = 2;
+            else if (s.IndexOf("CLIPS", StringComparison.Ordinal) == 0) GetIdx = 3;
             else return result;
             continue;
           }
-          if (GetIdx == 1) subj.Add(paths[0]);
-          else if (GetIdx == 2) subj_open.Add(paths[0]);
-          else clip.Add(paths[0]);
+          switch (GetIdx)
+          {
+            case 1:
+              subj.Add(paths[0]);
+              break;
+            case 2:
+              subj_open.Add(paths[0]);
+              break;
+            default:
+              clip.Add(paths[0]);
+              break;
+          }
         }
       }
       return result;
     }
     //-----------------------------------------------------------------------
 
-    public static void SaveClippingOp(string filename, Paths64 subj,
-      Paths64 subj_open, Paths64 clip, ClipType ct, FillRule fillRule, bool append)
+    public static void SaveClippingOp(string filename, Paths64? subj,
+      Paths64? subj_open, Paths64? clip, ClipType ct, FillRule fillRule, bool append)
     {
-      StreamWriter writer = new StreamWriter(filename, append);
-      if (writer == null) return;
+      StreamWriter writer;
+      try
+      {
+        writer = new StreamWriter(filename, append);
+      }
+      catch
+      {
+        return;
+      }
       writer.Write("CAPTION: 1. \r\n");
       writer.Write("CLIPTYPE: {0}\r\n", ct.ToString().ToUpper());
       writer.Write("FILLRULE: {0}\r\n", fillRule.ToString().ToUpper());
@@ -206,9 +230,24 @@ namespace Clipper2Lib
 
     public static void SaveToBinFile(string filename, Paths64 paths)
     {
-      FileStream filestream = new FileStream(filename, FileMode.Create);
-      BinaryWriter writer = new BinaryWriter(filestream);
-      if (writer == null) return;
+      FileStream filestream;
+      try
+      {
+        filestream = new FileStream(filename, FileMode.Create);
+      }
+      catch
+      {
+        return;
+      }
+      BinaryWriter writer;
+      try
+      {
+        writer = new BinaryWriter(filestream);
+      }
+      catch
+      {
+        return;
+      }
       writer.Write(paths.Count);
       foreach (Path64 path in paths)
       {
@@ -236,37 +275,13 @@ namespace Clipper2Lib
       return result;
     }
 
-    public static void OpenFile(string filename)
+    public static void OpenFileWithDefaultApp(string filename)
     {
       string path = Path.GetFullPath(filename);
       if (!File.Exists(path)) return;
-      Process p = new Process();
-      p.StartInfo = new ProcessStartInfo(path) { UseShellExecute = true };
+      Process p = new Process() { StartInfo = new ProcessStartInfo(path) { UseShellExecute = true } };
       p.Start();
     }
 
-    public static void CreateDisplaySvg(string afilename, string caption,
-      Paths64 subj, Paths64 subj_open, Paths64 clip, Paths64 sol, Paths64 sol_open,
-      FillRule fillrule, bool displaySolutionCoords)
-    {
-      afilename = Path.GetFullPath(afilename);
-      if (File.Exists(afilename)) File.Delete(afilename);
-      SimpleClipperSvgWriter svg = new SimpleClipperSvgWriter(fillrule);
-      if (caption != "")
-        svg.AddText(caption, margin, margin, 14, SimpleClipperSvgWriter.navy);
-      if (subj != null)
-        svg.AddPaths(subj, false, 0x110066FF, 0x33000099, 0.8);
-      if (subj_open != null)
-        svg.AddPaths(subj_open, true, 0, 0x66AA0000, 1.2);
-      if (clip != null)
-        svg.AddPaths(clip, false, 0x11996600, 0x55993300, 0.8);
-      if (sol != null)
-        svg.AddPaths(sol, false, 0x4000FF00, 0x80000000, 1.2,
-          displaySolutionCoords && sol.Count < 100);
-      if (sol_open != null)
-        svg.AddPaths(sol_open, true, 0, 0xFF00AAAA, 3.0);
-      svg.SaveToFile(afilename, displayWidth, displayHeight, margin);
-      OpenFile(afilename);
-    }
   }
 }
