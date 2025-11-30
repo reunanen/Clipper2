@@ -1,23 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 
+#if USINGZ
+namespace Clipper2ZLib.Benchmark
+#else
 namespace Clipper2Lib.Benchmark
+#endif
 {
-  using Path64 = List<Point64>;
-  using Paths64 = List<List<Point64>>;
-
   public class FastConfig : ManualConfig
     {
       public FastConfig()
       {
         Add(DefaultConfig.Instance); 
         AddJob(Job.Default
-            .WithLaunchCount(1)     
-            .WithWarmupCount(2)     
-            .WithIterationCount(2)  
+            .WithLaunchCount(1)
+            .WithWarmupCount(1)
+            .WithIterationCount(1)
         );
       }
     }
@@ -38,7 +38,7 @@ namespace Clipper2Lib.Benchmark
         [GlobalSetup]
         public void GlobalSetup()
         {
-            Random rand = new Random();
+            Random rand = new ();
 
             _subj = new Paths64();
             _clip = new Paths64();
@@ -51,7 +51,7 @@ namespace Clipper2Lib.Benchmark
         [Benchmark]
         public void Intersection_N()
         {
-            Clipper c = new Clipper();
+            Clipper64 c = new ();
             c.AddSubject(_subj);
             c.AddClip(_clip);
             c.Execute(ClipType.Intersection, FillRule.NonZero, _solution);
@@ -70,7 +70,7 @@ namespace Clipper2Lib.Benchmark
         [Benchmark]
         public void Difference_N()
         {
-            Clipper c = new Clipper();
+            Clipper c = new ();
             c.AddSubject(_subj);
             c.AddClip(_clip);
             c.Execute(ClipType.Difference, FillRule.NonZero, _solution);
@@ -79,7 +79,7 @@ namespace Clipper2Lib.Benchmark
         [Benchmark]
         public void Xor_N()
         {
-            Clipper c = new Clipper();
+            Clipper c = new ();
             c.AddSubject(_subj);
             c.AddClip(_clip);
             c.Execute(ClipType.Xor, FillRule.NonZero, _solution);
@@ -88,13 +88,13 @@ namespace Clipper2Lib.Benchmark
         private static Point64 MakeRandomPt(int maxWidth, int maxHeight, Random rand)
         {
             long x = rand.Next(maxWidth);
-            var y = rand.Next(maxHeight);
+            long y = rand.Next(maxHeight);
             return new Point64(x, y);
         }
 
         public static Path64 MakeRandomPath(int width, int height, int count, Random rand)
         {
-            Path64 result = new Path64(count);
+            Path64 result = new (count);
             for (int i = 0; i < count; ++i)
                 result.Add(MakeRandomPt(width, height, rand));
             return result;
