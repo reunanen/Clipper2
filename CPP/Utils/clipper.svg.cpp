@@ -1,29 +1,29 @@
 /*******************************************************************************
 * Author    :  Angus Johnson                                                   *
-* Date      :  16 May 2022                                                     *
-* Website   :  http://www.angusj.com                                           *
-* Copyright :  Angus Johnson 2010-2022                                         *
-* License   :  http://www.boost.org/LICENSE_1_0.txt                            *
+* Date      :  24 March 2024                                                   *
+* Website   :  https://www.angusj.com                                          *
+* Copyright :  Angus Johnson 2010-2024                                         *
+* License   :  https://www.boost.org/LICENSE_1_0.txt                           *
 *******************************************************************************/
 
-#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
-#include "./clipper.svg.h"
+#include "clipper.svg.h"
 
 namespace Clipper2Lib {
 
+  //------------------------------------------------------------------------------
+  // SvgWriter
+  //------------------------------------------------------------------------------
+
   const char svg_xml_header_0[] =
-		  "<?xml version=\"1.0\" standalone=\"no\"?>\n"
-          "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n"
-          "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n\n <svg width=\"";
+		  "<?xml version=\"1.0\" standalone=\"no\"?>\n<svg width=\"";
   const char svg_xml_header_1[] = "\" height=\"";
   const char svg_xml_header_2[] = "\" viewBox=\"0 0 ";
-  const char svg_xml_header_3[] = "\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n\n";
-
+  const char svg_xml_header_3[] = "\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n";
 
   const char svg_xml_0[] = "\"\n    style=\"fill:";
   const char svg_xml_1[] = "; fill-opacity:";
@@ -33,7 +33,7 @@ namespace Clipper2Lib {
   const char svg_xml_5[] = "; stroke-width:";
   const char svg_xml_6[] = ";\"/>\n";
 
-  inline std::string ColorToHtml(unsigned clr)
+  static std::string ColorToHtml(unsigned clr)
   {
     std::stringstream ss;
     ss << '#' << std::hex << std::setfill('0') << std::setw(6) << (clr & 0xFFFFFF);
@@ -41,17 +41,17 @@ namespace Clipper2Lib {
   }
   //------------------------------------------------------------------------------
 
-  inline float GetAlphaAsFrac(unsigned int clr)
+  static float GetAlphaAsFrac(unsigned int clr)
   {
-    return ((clr >> 24) / 255.0f);
+    return ((float)(clr >> 24) / 255.0f);
   }
   //------------------------------------------------------------------------------
 
-  void SvgWriter::Clear() 
+  void SvgWriter::Clear()
   {
-    for (PathInfoList::iterator pi_iter = path_infos.begin(); 
+    for (PathInfoList::iterator pi_iter = path_infos.begin();
       pi_iter != path_infos.end(); ++pi_iter) delete (*pi_iter);
-    path_infos.resize(0);    
+    path_infos.resize(0);
   }
   //------------------------------------------------------------------------------
 
@@ -64,40 +64,63 @@ namespace Clipper2Lib {
   }
   //------------------------------------------------------------------------------
 
-  void SvgWriter::AddText(const std::string &text,
-    unsigned font_color, unsigned font_size, int x, int y)
+  void SvgWriter::AddText(const std::string& text,
+    unsigned font_color, unsigned font_size, double x, double y)
   {
-      text_infos.push_back(new TextInfo(text, "", font_color, 600, font_size, x, y));
+    text_infos.push_back(new TextInfo(text, "", font_color, 600, font_size, x, y));
   }
   //------------------------------------------------------------------------------
 
-  void SvgWriter::AddPath(const PathD &path, bool is_open,
+  void SvgWriter::AddText(const std::string& text, const std::string& font_family,
+    unsigned font_color, unsigned font_size, double x, double y)
+  {
+    text_infos.push_back(new TextInfo(text, font_family, font_color, 600, font_size, x, y));
+  }
+  //------------------------------------------------------------------------------
+
+  void SvgWriter::AddPath(const Path64& path, bool is_open, FillRule fillrule,
     unsigned brush_color, unsigned pen_color, double pen_width, bool show_coords)
   {
+    int error_code = 0;
     if (path.size() == 0) return;
-    PathsD p;
-    p.push_back(path);
-    path_infos.push_back(new PathInfo(p, is_open, 
-      brush_color, pen_color, pen_width, show_coords));
-  }
-  //------------------------------------------------------------------------------
-
-  void SvgWriter::AddPaths(const Paths64& paths, bool is_open, 
-    unsigned brush_color, unsigned pen_color, double pen_width, bool show_coords)
-  {
-    if (paths.size() == 0) return;
-    PathsD tmp = ScalePaths<double, int64_t>(paths, scale_);
-    PathInfo* pi = new PathInfo(tmp, is_open,
+    PathsD tmp;
+    tmp.push_back(ScalePath<double, int64_t>(path, scale_, error_code));
+    if (error_code) return;
+    PathInfo* pi = new PathInfo(tmp, is_open, fillrule,
       brush_color, pen_color, pen_width, show_coords);
     path_infos.push_back(pi);
   }
   //------------------------------------------------------------------------------
 
-  void SvgWriter::AddPaths(const PathsD &paths, bool is_open,
+  void SvgWriter::AddPath(const PathD &path, bool is_open, FillRule fillrule,
+    unsigned brush_color, unsigned pen_color, double pen_width, bool show_coords)
+  {
+    if (path.size() == 0) return;
+    PathsD p;
+    p.push_back(path);
+    path_infos.push_back(new PathInfo(p, is_open, fillrule,
+      brush_color, pen_color, pen_width, show_coords));
+  }
+  //------------------------------------------------------------------------------
+
+  void SvgWriter::AddPaths(const Paths64& paths, bool is_open, FillRule fillrule,
+    unsigned brush_color, unsigned pen_color, double pen_width, bool show_coords)
+  {
+    int error_code = 0;
+    if (paths.size() == 0) return;
+    PathsD tmp = ScalePaths<double, int64_t>(paths, scale_, error_code);
+    if (error_code) return;
+    PathInfo* pi = new PathInfo(tmp, is_open, fillrule,
+      brush_color, pen_color, pen_width, show_coords);
+    path_infos.push_back(pi);
+  }
+  //------------------------------------------------------------------------------
+
+  void SvgWriter::AddPaths(const PathsD &paths, bool is_open, FillRule fillrule,
     unsigned brush_color, unsigned pen_color, double pen_width, bool show_coords)
   {
     if (paths.size() == 0) return;
-    path_infos.push_back(new PathInfo(paths, is_open, 
+    path_infos.push_back(new PathInfo(paths, is_open, fillrule,
       brush_color, pen_color, pen_width, show_coords));
   }
   //------------------------------------------------------------------------------
@@ -109,9 +132,23 @@ namespace Clipper2Lib {
   }
   //------------------------------------------------------------------------------
 
-  bool SvgWriter::SaveToFile(const std::string &filename, int max_width, int max_height, int margin)
+  static PathsD SimulateNegativeFill(const PathsD paths)
   {
-    RectD rec = MaxInvalidRectD;
+    return Union(paths, FillRule::Negative);
+  }
+  //------------------------------------------------------------------------------
+
+  static PathsD SimulatePositiveFill(const PathsD paths)
+  {
+    return Union(paths, FillRule::Positive);
+  }
+  //------------------------------------------------------------------------------
+
+  bool SvgWriter::SaveToFile(const std::string &filename,
+    int max_width, int max_height, int margin)
+  {
+    // get the bounds of all path_infos
+    RectD rec = InvalidRectD;
     for (const PathInfo* pi : path_infos)
       for (const PathD& path : pi->paths_)
         for (const PointD& pt : path){
@@ -128,7 +165,7 @@ namespace Clipper2Lib {
     double  scale = std::min(
       static_cast<double>(max_width - margin * 2) / rec.Width(),
       static_cast<double>(max_height - margin * 2) / rec.Height());
-    
+
     rec.Scale(scale);
     double offsetX = margin -rec.left;
     double offsetY = margin -rec.top;
@@ -143,61 +180,98 @@ namespace Clipper2Lib {
       max_height << "px" << svg_xml_header_2 <<
       max_width << " " <<
       max_height << svg_xml_header_3;
-    setlocale(LC_NUMERIC, "C");
+    setlocale(LC_NUMERIC, "C"); // decimal separator == '.' and no thousand separators
     file.precision(2);
 
-    for (PathInfo* pi : path_infos) 
+    // code block used to simulate POSITIVE or NEGATIVE filling rules
+    for (PathInfo* pi : path_infos)
     {
-      file << "  <path d=\"";      
+      if (pi->is_open_path || GetAlphaAsFrac(pi->brush_color_) == 0 ||
+        (pi->fillrule_ != FillRule::Positive && pi->fillrule_ != FillRule::Negative))
+          continue;
+
+      PathsD ppp = pi->fillrule_ == FillRule::Positive ?
+        SimulatePositiveFill(pi->paths_) :
+        SimulateNegativeFill(pi->paths_);
+
+      file << "  <path d=\"";
+      for (PathD& path : ppp)
+      {
+        if (path.size() < 2 || (path.size() == 2 && !pi->is_open_path)) continue;
+        file << " M " << (static_cast<double>(path[0].x) * scale + offsetX) <<
+          " " << (static_cast<double>(path[0].y) * scale + offsetY);
+        for (PointD& pt : path)
+          file << " L " << (pt.x * scale + offsetX) << " "
+          << (pt.y * scale + offsetY);
+        if (!pi->is_open_path)  file << " z";
+      }
+
+      file << svg_xml_0 << ColorToHtml(pi->brush_color_) <<
+        svg_xml_1 << GetAlphaAsFrac(pi->brush_color_) <<
+        svg_xml_2 << "evenodd" <<
+        svg_xml_3 << ColorToHtml(0) <<
+        svg_xml_4 << GetAlphaAsFrac(0) <<
+        svg_xml_5 << pi->pen_width_ << svg_xml_6;
+    }
+
+    for (PathInfo* pi : path_infos)
+    {
+      // ignore filling (brushColor == 0) if POSITIVE or NEGATIVE filling
+      unsigned brushColor =
+        (pi->fillrule_ == FillRule::Positive || pi->fillrule_ == FillRule::Negative) ?
+        0 : pi->brush_color_;
+
+      file << "  <path d=\"";
       for (PathD& path : pi->paths_)
       {
         if (path.size() < 2 || (path.size() == 2 && !pi->is_open_path)) continue;
         file << " M " << (static_cast<double>(path[0].x) * scale + offsetX) <<
           " " << (static_cast<double>(path[0].y) * scale + offsetY);
         for (PointD& pt : path)
-          file << " L " << (pt.x * scale + offsetX) << " " 
+          file << " L " << (pt.x * scale + offsetX) << " "
             << (pt.y * scale + offsetY);
         if(!pi->is_open_path)  file << " z";
       }
 
-      file << svg_xml_0 << ColorToHtml(pi->brush_color_) <<
-        svg_xml_1 << GetAlphaAsFrac(pi->brush_color_) <<
-        svg_xml_2 <<
-        (fill_rule == FillRule::EvenOdd ? "evenodd" : "nonzero") <<
+      file << svg_xml_0 << ColorToHtml(brushColor) <<
+        svg_xml_1 << std::setprecision(2) << GetAlphaAsFrac(brushColor) <<
+        svg_xml_2 << (pi->fillrule_ == FillRule::NonZero ? "nonzero" : "evenodd") <<
         svg_xml_3 << ColorToHtml(pi->pen_color_) <<
         svg_xml_4 << GetAlphaAsFrac(pi->pen_color_) <<
         svg_xml_5 << pi->pen_width_ << svg_xml_6;
 
       if (pi->show_coords_) {
-        file << std::setprecision(0) 
-          << "  <g font-family=\"" << coords_style.font_name << "\" font-size=\"" <<
-          coords_style.font_size  << "\" fill=\""<< ColorToHtml(coords_style.font_color) << 
+        file << std::setprecision(0)  <<
+          "  <g font-family=\"" << coords_style.font_name << "\" font-size=\"" <<
+          coords_style.font_size  << "\" fill=\""<< ColorToHtml(coords_style.font_color) <<
           "\" fill-opacity=\"" << GetAlphaAsFrac(coords_style.font_color) << "\">\n";
-        for (PathD& path : pi->paths_)
+        for (const PathD& path : pi->paths_)
         {
           size_t path_len = path.size();
           if (path_len < 2 || (path_len == 2 && !pi->is_open_path)) continue;
-          for (PointD& pt : path)
+          for (const PointD& pt : path)
             file << "    <text x=\"" << static_cast<int>(pt.x * scale + offsetX) <<
               "\" y=\"" << static_cast<int>(pt.y * scale + offsetY) << "\">" <<
-              pt.x << "," << pt.y << "</text>\n";         
+              pt.x << "," << pt.y << "</text>\n";
         }
         file << "  </g>\n\n";
       }
     }
 
-    //draw red dots at all vertices - useful for debugging
+    ////draw red dots at all solution vertices - useful for debugging
     //for (PathInfo* pi : path_infos)
-    //  for (PathD& path : pi->paths_)
-    //    for (PointD& pt : path)
-    //      DrawCircle(file, pt.x * scale + offsetX, pt.y * scale + offsetY, 1);
+    //  if (!(pi->pen_color_ & 0x00FF00FF)) // ie any shade of green only
+    //    for (PathD& path : pi->paths_)
+    //      for (PointD& pt : path)
+    //        DrawCircle(file, pt.x * scale + offsetX, pt.y * scale + offsetY, 1.6);
 
-    for (TextInfo* ti : text_infos) 
+    for (TextInfo* ti : text_infos)
     {
       file << "  <g font-family=\"" << ti->font_name << "\" font-size=\"" <<
         ti->font_size << "\" fill=\"" << ColorToHtml(ti->font_color) <<
         "\" fill-opacity=\"" << GetAlphaAsFrac(ti->font_color) << "\">\n";
-      file << "    <text x=\"" << (ti->x + margin) << "\" y=\"" << (ti->y+margin) << "\">" <<
+      file << "    <text x=\"" << static_cast<int>(ti->x * scale + offsetX) << 
+        "\" y=\"" << static_cast<int>(ti->y * scale + offsetY) << "\">" <<
         ti->text << "</text>\n  </g>\n\n";
     }
 
@@ -206,11 +280,12 @@ namespace Clipper2Lib {
     setlocale(LC_NUMERIC, "");
     return true;
   }
-  
+
   //------------------------------------------------------------------------------
+  // SvgReader
   //------------------------------------------------------------------------------
 
-  bool SkipBlanks(std::string::const_iterator& si,
+  static bool SkipBlanks(std::string::const_iterator& si,
     const std::string::const_iterator se)
   {
     while (si != se && *si <= ' ') ++si;
@@ -218,7 +293,17 @@ namespace Clipper2Lib {
   }
   //------------------------------------------------------------------------------
 
-  bool GetNum(std::string::const_iterator& si,
+  static bool SkipOptionalComma(std::string::const_iterator& si,
+      const std::string::const_iterator se)
+  {
+    while (si != se && *si <= ' ') ++si;
+    if (si != se && *si == ',') ++si;
+    return si != se;
+  }
+  //------------------------------------------------------------------------------
+
+
+    static bool GetNum(std::string::const_iterator& si,
     const std::string::const_iterator se, double& value)
   {
     while (si != se && *si <= ' ') ++si;
@@ -252,127 +337,63 @@ namespace Clipper2Lib {
   }
   //------------------------------------------------------------------------------
 
-  bool GetCommand(std::string::const_iterator& si,
-    char& command, bool& is_relative)
-  {
-    if (*si >= 'a' && *si <= 'z')
-    {
-      is_relative = true;
-      command = toupper(*si);
-    }
-    else if (*si >= 'A' && *si <= 'Z')
-    {
-      command = *si;
-      is_relative = false;
-    }
-    else return false; //ie leave command and is_relative unchanged!
-    ++si; //only increment the offset with a valid command
-    return true;
-  }
-  //------------------------------------------------------------------------------
 
-  inline bool Find(const std::string& text,
-    std::string::iterator& start, const std::string::iterator& end)
+    static bool FileExists(const std::string& filename)
   {
-    start = std::search(start, end, text.cbegin(), text.cend());
-    return start != end;
+    //return std::filesystem::exists(filename); // <filesystem> not available in Ubuntu (#990)
+    std::ifstream file(filename);
+    return file.good();
   }
-  //------------------------------------------------------------------------------
 
-  bool SvgReader::LoadPath(std::string::iterator& p,
-    const std::string::iterator& pe)
+  SvgReader::SvgReader(const std::string& filename)
   {
-    if (!Find("d=\"", p, pe)) return false;
-    p += 3;
-    if (!SkipBlanks(p, pe)) return false;
-    char command;
-    bool is_relative;
-    int vals_needed = 2;
-    //nb: M == absolute move, m == relative move 
-    if (!GetCommand(p, command, is_relative) || command != 'M') return false;
-    double vals[2] { 0, 0 };
-    double x = 0, y = 0;
-    ++p;
-    if (!GetNum(p, pe, x) || !GetNum(p, pe, y)) return false;
-    PathsD ppp;
-    PathD pp;
-    pp.push_back(PointD(x, y));
-    while (SkipBlanks(p, pe)) 
+    if (!FileExists(filename)) return;
+    std::ifstream file(filename);
+    if (!file.good()) return;
+    std::stringstream xml_buff;
+    xml_buff << file.rdbuf();
+    file.close();
+
+    const std::string xml = xml_buff.str();
+    size_t i = xml.find("d=\"M");
+    if (i == std::string::npos) return;
+    std::string::const_iterator it = xml.cbegin() + (i + 4), itEnd = xml.cend();
+    if (!SkipBlanks(it, itEnd)) return;
+    PathD p;
+    PointD m, pt;
+    GetNum(it, itEnd, m.x);
+    SkipOptionalComma(it, itEnd);
+    if (!GetNum(it, itEnd, m.y)) return;
+    p.push_back(m);
+    while (SkipBlanks(it, itEnd))
     {
-      if (GetCommand(p, command, is_relative)) 
+      if (*it == 'L') ++it;
+      if (*it == 'M' || *it == 'Z')
       {
-        switch (command) {
-        case 'L': 
-        case 'M': {vals_needed = 2;  break; }
-        case 'H': 
-        case 'V': {vals_needed = 1;  break; }
-        case 'Z': {
-            if (pp.size() > 2) ppp.push_back(pp);
-            pp.clear();
-            vals_needed = 0;  
-            break;
+        if (p.size() > 2) paths.push_back(p);
+        p.resize(0);
+        if (*it == 'Z')
+        {
+          ++it;
+          if (!SkipBlanks(it, itEnd)) break;
         }
-        default: vals_needed = -1;
+        if (*it == 'M')
+        {
+          ++it;
+          if (!GetNum(it, itEnd, pt.x)) break;
+          SkipOptionalComma(it, itEnd);
+          if (!GetNum(it, itEnd, pt.y)) break;
         }
-        if (vals_needed < 0) break; //oops!
+        p.push_back(pt);
+        continue;
       }
-      else
-      {
-        for (int i = 0; i < vals_needed; ++i)
-            if (!GetNum(p, pe, vals[i])) vals_needed = -1;
-        if (vals_needed <= 0) break; //oops!
-        switch (vals_needed) {
-          case 1: 
-          {
-              if (command == 'V') y = (is_relative ? y + vals[0] : vals[0]);
-              else x = (is_relative ? x + vals[0] : vals[0]);
-              break;
-          }
-          case 2: 
-          {
-              x = (is_relative ? x + vals[0] : vals[0]);
-              y = (is_relative ? y + vals[1] : vals[1]);
-              break;
-          }
-          default: break;
-        }
-        pp.push_back(PointD(x, y));
-      }
+      GetNum(it, itEnd, pt.x);
+      SkipOptionalComma(it, itEnd);
+      if (!GetNum(it, itEnd, pt.y)) break;
+      p.push_back(pt);
+      SkipOptionalComma(it, itEnd);
     }
-    if (pp.size() > 3) ppp.push_back(pp);
-    path_infos.push_back(new PathInfo(ppp, false, 0, 0xFF000000, 1, false));
-    return  (ppp.size() > 0);
-  }
-
-  bool SvgReader::LoadFromFile(const std::string &filename)
-  {
-      Clear();
-      std::ifstream file;
-      file.open(filename);      
-      std::stringstream xml_buff;
-      xml_buff << file.rdbuf();
-      file.close();
-      xml = xml_buff.str();
-      std::string::iterator p = xml.begin(), q, xml_end = xml.end();
-
-      while (Find("<path", p, xml_end))
-      {      
-        p += 6;
-        q = p;
-        if (!Find("/>", p, xml_end)) break;
-        LoadPath(q, p);
-        p += 2;
-      }
-      return path_infos.size() > 0;
-  }
-
-  PathsD SvgReader::GetPaths() 
-  {
-    PathsD result;
-      for (size_t i = 0; i < path_infos.size(); ++i)
-          for (size_t j = 0; j < path_infos[i]->paths_.size(); ++j)
-              result.push_back(path_infos[i]->paths_[j]);
-      return result;
+    if (p.size() > 2) paths.push_back(p);
   }
 
 } //namespace
