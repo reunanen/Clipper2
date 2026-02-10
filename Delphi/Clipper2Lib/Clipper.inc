@@ -6,38 +6,29 @@
 //For user defined Z-coordinates, defined in Clipper's 'SetZ' callback event
 {.$DEFINE USINGZ}
 
-//Winding direction is based on the Cartesian Plane where the display origin 
-//is in the bottom-left corner. For displays with inverted Y-axes, the winding 
-//direction will be reversed such that clockwise becomes anti-clockwise and 
-//positive winding will become negative. This is important when using either
-//FillRule.Positive or FillRule.Negative, and also when calculating areas
-//(which may be positive or negative depending on orientation). When 
-//developing graphics related software using displays with inverted Y-axes,
-//coordinate orientation is reversed which may cause confusion. This can be
-//addressed by reversing the normal orientation.
-{.$DEFINE REVERSE_ORIENTATION}
-
 ///////////////////////////////////////////////////////////////////////////////
-//COMPILER DIFINED PREPROCESSOR DIRECTIVES (ie. do not touch ;))
+//COMPILER DEFINED PREPROCESSOR DIRECTIVES (ie. do not touch ;))
 ///////////////////////////////////////////////////////////////////////////////
 
 {$IFDEF FPC}
   {$DEFINE INLINING}
   {$MODE DELPHI}
 {$ELSE}
-  {$IF CompilerVersion < 14}
+  {$IF COMPILERVERSION < 14}
     Requires Delphi version 6 or above.
   {$IFEND}
-  {$IF CompilerVersion >= 18}             //Delphi 2007
-    {$DEFINE RECORD_METHODS}              //Delphi 2006 - added records with methods
-    //While "inlining" has been supported since D2005, both D2005 and D2006
-    //have an inline codegen bug (QC41166) so ignore inline until D2007.
-    {$DEFINE INLINING}
+  {$IF COMPILERVERSION >= 18}             //Delphi 2007
+    {$DEFINE RECORD_METHODS}              
     {$DEFINE STRICT}
-    {$IF COMPILERVERSION >= 23}           //Delphi XE2+
-      {$DEFINE XPLAT_GENERICS}
-      {$IF COMPILERVERSION >= 24}         //Delphi XE3+
-        {$LEGACYIFEND ON}
+    {$IF COMPILERVERSION >= 19}           //Delphi 2009  
+      //While "inlining" is supported from D2005, it's buggy (see QC41166) until D2009
+      {$DEFINE INLINING}
+      {$IF COMPILERVERSION >= 23}           //Delphi XE2+
+        {$DEFINE XPLAT_GENERICS}
+        {$DEFINE ROUNDINGMODE}   
+        {$IF COMPILERVERSION >= 24}         //Delphi XE3+
+          {$LEGACYIFEND ON}
+        {$IFEND}
       {$IFEND}
     {$IFEND}
   {$IFEND}

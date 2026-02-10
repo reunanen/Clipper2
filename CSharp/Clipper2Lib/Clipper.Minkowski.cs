@@ -1,24 +1,22 @@
 ﻿/*******************************************************************************
 * Author    :  Angus Johnson                                                   *
-* Version   :  10.0 (beta) - also known as Clipper2                            *
-* Date      :  10 May 2022                                                     *
-* Website   :  http://www.angusj.com                                           *
-* Copyright :  Angus Johnson 2010-2022                                         *
+* Date      :  10 October 2024                                                 *
+* Website   :  https://www.angusj.com                                          *
+* Copyright :  Angus Johnson 2010-2024                                         *
 * Purpose   :  Minkowski Sum and Difference                                    *
-* License   :  http://www.boost.org/LICENSE_1_0.txt                            *
+* License   :  https://www.boost.org/LICENSE_1_0.txt                           *
 *******************************************************************************/
 
 #nullable enable
 using System;
-using System.Collections.Generic;
 
+#if USINGZ
+namespace Clipper2ZLib
+#else
 namespace Clipper2Lib
+#endif
 {
-  using Path64 = List<Point64>;
-  using Paths64 = List<List<Point64>>;
-  using PathD = List<PointD>;
-  using PathsD = List<List<PointD>>;
-  public class Minkowski
+  public static class Minkowski
   {
     private static Paths64 MinkowskiInternal(Path64 pattern, Path64 path, bool isSum, bool isClosed)
     {
@@ -54,8 +52,8 @@ namespace Clipper2Lib
           {
             tmp[g][h], tmp[i][h], tmp[i][j], tmp[g][j]
           };
-          if (!ClipperFunc.IsClockwise(quad))
-            result.Add(ClipperFunc.ReversePath(quad));
+          if (!Clipper.IsPositive(quad))
+            result.Add(Clipper.ReversePath(quad));
           else
             result.Add(quad);
           h = j;
@@ -67,30 +65,30 @@ namespace Clipper2Lib
 
     public static Paths64 Sum(Path64 pattern, Path64 path, bool isClosed)
     {
-      return ClipperFunc.Union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);
+      return Clipper.Union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);
     }
 
     public static PathsD Sum(PathD pattern, PathD path, bool isClosed, int decimalPlaces = 2)
     {
       double scale = Math.Pow(10, decimalPlaces);
-      Paths64 tmp = ClipperFunc.Union(MinkowskiInternal(ClipperFunc.ScalePath64(pattern, scale),
-        ClipperFunc.ScalePath64(path, scale), true, isClosed), FillRule.NonZero);
-      return ClipperFunc.ScalePathsD(tmp, 1 / scale);
+      Paths64 tmp = Clipper.Union(MinkowskiInternal(Clipper.ScalePath64(pattern, scale),
+        Clipper.ScalePath64(path, scale), true, isClosed), FillRule.NonZero);
+      return Clipper.ScalePathsD(tmp, 1 / scale);
     }
 
     public static Paths64 Diff(Path64 pattern, Path64 path, bool isClosed)
     {
-      return ClipperFunc.Union(MinkowskiInternal(pattern, path, false, isClosed), FillRule.NonZero);
+      return Clipper.Union(MinkowskiInternal(pattern, path, false, isClosed), FillRule.NonZero);
     }
 
     public static PathsD Diff(PathD pattern, PathD path, bool isClosed, int decimalPlaces = 2)
     {
       double scale = Math.Pow(10, decimalPlaces);
-      Paths64 tmp = ClipperFunc.Union(MinkowskiInternal(ClipperFunc.ScalePath64(pattern, scale),
-        ClipperFunc.ScalePath64(path, scale), false, isClosed), FillRule.NonZero);
-      return ClipperFunc.ScalePathsD(tmp, 1 / scale);
+      Paths64 tmp = Clipper.Union(MinkowskiInternal(Clipper.ScalePath64(pattern, scale),
+        Clipper.ScalePath64(path, scale), false, isClosed), FillRule.NonZero);
+      return Clipper.ScalePathsD(tmp, 1 / scale);
     }
 
   }
 
-} //namespace
+} // namespace

@@ -5,80 +5,94 @@
 #include <string>
 #include <chrono> 
 #include <iomanip>
+#include <sstream>
 
 /*
 
 Timer Usage:
-
-The Timer object will start immediately following its construction.
-It will stop when its destructor is called on leaving scope and
-the time interval will be sent to standard output.
-
-The Timer's constructor takes two optional string parameters:
-  caption   : test sent to standard output just before timing commences.
-  time_text : text to be output to the left of the recorded time interval.
+The Timer object will start immediately following its construction 
+(unless "start_paused" is true). The timer's pause() and resume() can 
+be called an number of times and the total interval while unpaused 
+will be returned when elapsed() is called.
 
 Example:
 
   #include "timer.h"
-  #include "windows.h" //for Sleep() :)
 
   void main()
   {
-
-    //when this code block finishes, the time interval 
-    //will be sent to standard output.
-    {
-      Timer timer("Starting timer now.", "This operation took ");
-      Sleep(1000);
-    }
-
+    Timer timer;
+    Sleep(1000);
+    std::cout << timer.elapsed_str();
   }
 
 */
 
 struct Timer {
 private:
-  std::streamsize old_precision;
-  int old_flags;
-  std::chrono::steady_clock::time_point time_started = {};
-  std::string _time_text = "";  
-  void init() 
-  { 
-    old_precision = std::cout.precision(0);
-    old_flags = std::cout.flags();
-    time_started = std::chrono::high_resolution_clock::now(); 
-  }
+  std::streamsize old_precision = std::cout.precision(0);
+  std::ios_base::fmtflags old_flags = std::cout.flags();
+  std::chrono::high_resolution_clock::time_point time_started_;
+  std::chrono::high_resolution_clock::duration duration_ = {};
+  bool paused_ = false;
+
 public:
-  explicit Timer() { init(); }  
-  explicit Timer(const std::string& caption, const std::string& time_text = "")  
+
+  Timer(bool start_paused = false): paused_(start_paused) 
   {
-    init();
-    _time_text = time_text;
-    if (caption != "") std::cout << caption << std::endl;
+    if (!paused_) time_started_ =
+      std::chrono::high_resolution_clock::now();
   }
 
-  ~Timer()
+  void restart()
   {
-    std::chrono::steady_clock::time_point 
-      time_ended = std::chrono::high_resolution_clock::now();
-    int nsecs = static_cast<int>(std::log10(std::chrono::duration_cast<std::chrono::nanoseconds>
-      (time_ended - time_started).count()));
+    paused_ = false;
+    duration_ = {};
+    time_started_ = std::chrono::high_resolution_clock::now();
+  }
 
-    std::cout << std::fixed << std::setprecision(static_cast<uint8_t>(2 -(nsecs % 3))) << _time_text;
-    if (nsecs < 6) 
-      std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>
-      (time_ended - time_started).count() * 1.0e-3 << " microsecs" << std::endl;
-    else if (nsecs < 9)
-      std::cout << std::chrono::duration_cast<std::chrono::microseconds>
-        (time_ended - time_started).count() * 1.0e-3 << " millisecs" << std::endl;
-    else 
-      std::cout << std::chrono::duration_cast<std::chrono::milliseconds>
-      (time_ended - time_started).count() * 1.0e-3 << " secs" << std::endl;
-    
-    std::cout.precision(old_precision);
-    std::cout.flags(old_flags);
+  void resume()
+  {
+    if (!paused_) return;
+    paused_ = false;
+    time_started_ = std::chrono::high_resolution_clock::now();
+  }
+
+  void pause()
+  {
+    if (paused_) return;
+    std::chrono::high_resolution_clock::time_point now =
+      std::chrono::high_resolution_clock::now();
+    duration_ += (now - time_started_);
+    paused_ = true;
+  }
+
+  int64_t elapsed_nano() // result in nano-seconds
+  {
+    if (!paused_)
+    {
+      std::chrono::high_resolution_clock::time_point now =
+        std::chrono::high_resolution_clock::now();
+      duration_ += (now - time_started_);
+    }
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(duration_).count();
+  }
+
+  std::string elapsed_str() // result as string
+  {
+    int64_t nano_secs = elapsed_nano();
+    int nsecs_log10 = static_cast<int>(std::log10(nano_secs));
+    std::ostringstream os{};
+    os.precision(static_cast<uint8_t>(2.0 - (nsecs_log10 % 3)));
+    os << std::fixed;
+    if (nsecs_log10 < 6)
+      os << nano_secs * 1.0e-3 << " microsecs";
+    else if (nsecs_log10 < 9)
+      os << nano_secs * 1.0e-6 << " millisecs";
+    else
+      os << nano_secs * 1.0e-9 << " secs";
+    return os.str();
   }
 };
 
-#endif CLIPPER_TIMER_H
+#endif // CLIPPER_TIMER_H
